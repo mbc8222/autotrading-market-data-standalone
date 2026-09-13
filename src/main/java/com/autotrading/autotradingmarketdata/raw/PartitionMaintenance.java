@@ -21,10 +21,10 @@ import org.springframework.stereotype.Component;
  * {@code collect.raw.enabled=true}일 때만 활성. DDL 실패는 삼킨다(기동/스케줄 정지 방지).
  * 모든 식별자·범위는 코드 계산값만 사용(injection 무관).
  *
- * <p>★ 삭제는 이 클래스가 하지 않는다(2026-09-06). 파티션 DROP 의 유일한 주체는 cold-export 컨테이너
- * (PycharmProjects/autotrading-cold-export)이며, Parquet 이관·정수 검증이 끝난 파티션만 지운다.
- * 예전 "90일 경과 무조건 DROP"은 이관 여부를 보지 않아 Parquet 없이 데이터를 잃을 수 있어 제거했다.
- * 이관이 멈추면 핫 파티션이 쌓일 뿐 손실은 없다(설계 정본: obsidian AutoTrading_콜드저장_설계_2026-09-06).
+ * <p>★ 이 클래스는 파티션을 <b>만들기만 하고 지우지 않는다</b>. 예전엔 "90일 경과 무조건 DROP" 이었으나
+ * 백업 여부를 보지 않아 사본 없이 데이터를 잃을 수 있어 제거했다(2026-09-06).
+ * 따라서 <b>파티션을 지우는 주체가 없다</b> — 보존은 운영자가 직접 관리한다.
+ * 쌓이기만 할 뿐 손실은 없으므로, 필요 없어진 날짜를 {@code DROP TABLE ..._pYYYYMMDD} 로 지우면 된다.
  */
 @Component
 @ConditionalOnProperty(name = "collect.raw.enabled", havingValue = "true")
