@@ -58,8 +58,6 @@ dependencies {
     // Spring Cache abstraction: exchange info, symbol metadata 같은 반복 조회 데이터 캐싱에 사용한다.
     implementation 'org.springframework.boot:spring-boot-starter-cache'
 
-    // Redis(Lettuce, 명령형): 최신가 key-value 저장과 시장이벤트 Redis Streams 발행에 사용한다.
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // Flyway: DB schema migration을 코드와 함께 버전 관리한다. (Boot 4.0부터 전용 starter 사용)
     implementation 'org.springframework.boot:spring-boot-starter-flyway'

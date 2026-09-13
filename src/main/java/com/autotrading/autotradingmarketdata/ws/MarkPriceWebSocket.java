@@ -15,7 +15,8 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * markPrice 스트림({@code <symbol>@markPrice@1s}) — 마크/인덱스 가격 + 예상 펀딩비를 1초마다 수신해
- * Redis 핫상태 KV로 발행(유실 OK — 다음 값이 덮는다).
+ * MarketDataPublisher 로 넘기지만, standalone 판에는 발행 대상(Redis)도 DB 적재 경로도 없어 버려진다.
+ * 필요 없으면 collect.ws.enabled=false 로 WS 전체를 끄거나 WebSocketStarter 에서 이 소켓만 뺀다.
  */
 @Component
 @ClientEndpoint

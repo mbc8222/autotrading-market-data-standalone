@@ -1,45 +1,58 @@
-# autotrading-market-data — 컨테이너 실행 (2026-06-13: WSL+systemd 대신 Docker 채택)
+# autotrading-market-data (standalone) — 이 파일 하나로 전부 뜬다.
 #
-# 실행:   docker compose up -d --build      (이 파일 위치 = 프로젝트 루트)
-# 로그:   docker compose logs -f             (+ 파일 로그는 호스트 ./logs 에 보존)
-# 갱신:   docker compose up -d --build       (코드/접속정보 바꾼 뒤)
-# 중지:   docker compose down
+# 실행:   docker compose up -d --build
+# 로그:   docker compose logs -f
+# 중지:   docker compose down          (데이터 볼륨은 남는다)
+# 삭제:   docker compose down -v       (★ DB 데이터까지 지운다)
 #
-# 인프라(PostgreSQL01·redis)는 이 compose 밖의 별도 컨테이너다(건드리지 않음 = 수집 무중단).
-# 호스트로 포트를 발행하므로 컨테이너에서는 host.docker.internal:<port> 로 접속한다.
-# 모니터링(prometheus·grafana)도 별도 compose(%USERPROFILE%\docker) — prometheus 는
-# host.docker.internal:8080 으로 actuator/prometheus 를 스크랩(아래 ports 발행).
+# 본판(main)과의 차이:
+#   - Redis 없음. 수집 → PostgreSQL 적재까지만 한다.
+#   - 공유 외부망(autotrading-net) 없음. compose 기본망이 서비스 이름을 DNS 로 풀어준다.
+#   - PostgreSQL 이 이 compose 안에 있다. 별도 인프라 셋업이 필요 없다.
+#
+# ★ 설정값은 전부 deploy/market-data.env 한 파일에서 온다(compose 의 ${} 치환이 아니라 env_file 주입).
+#   postgres 이미지의 POSTGRES_* 와 앱의 SPRING_* 이 같은 파일에 있으므로 비밀번호를 한 곳만 고치면 안 된다 —
+#   POSTGRES_PASSWORD 와 SPRING_DATASOURCE_PASSWORD 를 같은 값으로 맞출 것.
 services:
-  market-data:
-    build: .
-    image: autotrading-market-data:latest
-    container_name: autotrading-market-data
-
-    # ★ 무중단 핵심: 죽으면 자동 재시작 + Docker 데몬 기동(부팅) 시 자동 기동 — 25h 손실 재발 방지.
+  postgres:
+    image: postgres:18
+    container_name: md-postgres
     restart: unless-stopped
-
-    # prod 프로파일 활성화 → 접속정보=env_file, 로그=파일 appender (log4j2-spring.xml).
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-    # 접속정보/시크릿. deploy/market-data.env.example 를 복사해 deploy/market-data.env 로 채운다(gitignored).
+    # POSTGRES_DB/USER/PASSWORD 는 deploy/market-data.env 에서 온다.
+    # 첫 기동(빈 볼륨)에만 동작해 DB·계정을 만든다. 스키마·표는 앱이 Flyway 로 만든다.
     env_file:
       - deploy/market-data.env
-
-    ports:
-      - "8080:8080"
-
     volumes:
-      # prod 롤링 로그 파일을 호스트에 보존 (컨테이너 재생성에도 로그 유지). 경로는 log4j2-spring.xml 기본값과 일치.
+      - pgdata:/var/lib/postgresql/data
+    # 호스트로 포트를 열지 않는다(앱은 같은 compose 망에서 붙는다).
+    # DBeaver/DataGrip 등으로 직접 보거나 호스트에서 bootRun 하려면 아래 주석을 풀되 127.0.0.1 바인딩 유지.
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  market-data:
+    build: .
+    image: autotrading-market-data:standalone
+    container_name: md-collector
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    env_file:
+      - deploy/market-data.env
+    ports:
+      # actuator(health·prometheus). 외부에 열 필요가 없으면 127.0.0.1 바인딩을 유지한다.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # prod 롤링 로그를 호스트에 보존 (컨테이너 재생성에도 유지)
       - ./logs:/var/log/autotrading
 
-    networks:
-      - default          # 이 compose 자체 망(유지)
-      - autotrading-net  # redis/postgres 와 컨테이너명 직결용 공유 외부망
-
-    extra_hosts:
-      # 폴백용으로 남겨둠(접속은 공유망 redis:6379/postgres:5432 우선). 제거해도 무방.
-      - "host.docker.internal:host-gateway"
-
-networks:
-  autotrading-net:
-    external: true
+volumes:
+  pgdata:
