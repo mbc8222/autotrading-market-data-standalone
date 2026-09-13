@@ -1,4 +1,4 @@
-# autotrading-market-data (standalone)
+# autotrading-market-data-standalone
 
 바이낸스 USDⓈ-M 선물(fapi)의 시세·파생·실시간 스트림을 수집해 **PostgreSQL에 적재하는** 단독 서비스.
 
@@ -31,8 +31,8 @@ GRANT ALL ON DATABASE marketdata TO marketdata;
 **2. 실행**
 
 ```bash
-git clone -b standalone https://github.com/mbc8222/autotrading-market-data.git
-cd autotrading-market-data
+git clone https://github.com/mbc8222/autotrading-market-data-standalone.git
+cd autotrading-market-data-standalone
 ./gradlew bootRun          # Windows: gradlew.bat bootRun
 ```
 

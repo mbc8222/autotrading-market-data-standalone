@@ -1,12 +1,22 @@
-# autotrading-market-data (standalone) — 프로젝트 가이드
+# autotrading-market-data-standalone — 프로젝트 가이드
 
 ## 개요
 바이낸스 선물(fapi) 데이터를 수집해 **PostgreSQL(raw 히스토리)에 적재하는** 단독 서비스.
 외부 의존은 **PostgreSQL 접속 하나**뿐이다. 메시지 브로커·컨테이너·공유 네트워크를 쓰지 않는다.
 
-> 이 브랜치는 `standalone` 이다. 원본(`main`)은 4-서비스 이벤트드리븐 MSA 의 ① 수집 담당이라
-> Redis Stream/KV 로 하류(분석·조회 API)에 발행하고, 미리 떠 있는 공유 인프라에 붙는다.
-> 이 판은 그 전제를 전부 걷어냈다. 바뀐 파일은 README "본판과의 차이" 참고.
+> 이 저장소는 원본 `github.com/mbc8222/autotrading-market-data` 의 **독립 배포판**이다.
+> 원본은 4-서비스 이벤트드리븐 MSA 의 ① 수집 담당이라 Redis Stream/KV 로 하류(분석·조회 API)에
+> 발행하고 미리 떠 있는 공유 인프라에 붙는다. 이 판은 그 전제를 전부 걷어냈다.
+>
+> **★ 병합은 한 방향뿐이다: 원본 → 여기.** 반대로 이 저장소의 내용을 원본에 병합하면 안 된다 —
+> `MarketDataPublisher` 가 no-op 이라 원본의 Redis 발행이 조용히 멈추고, 그 키를 읽는 조회 API 와
+> 화면이 죽는다. 예외도 안 나고 health 도 UP 인 채로. 원본 저장소는 `upstream` 원격으로 등록돼 있다:
+>
+> ```bash
+> git fetch upstream && git merge upstream/main   # 원본의 수집 개선 가져오기
+> ```
+> 수집기 본체는 원본과 바이트 단위로 같아서, 충돌은 아래 네 파일 안에서만 난다:
+> `MarketDataPublisher` · `InfraHealthMetrics` · `PartitionMaintenance`(javadoc) · `MarkPriceWebSocket`(javadoc).
 
 **스택**: Spring Boot 4.1.x, Java 21 + **가상 스레드**(`spring.threads.virtual.enabled=true`), 명령형 Web(MVC),
 spring-jdbc(HikariCP) + Flyway, Log4j2, RestClient, jakarta.websocket.
@@ -59,9 +69,9 @@ raw/       BatchBuffer·AggTradeBuffer → RawPersister(전용 워커) · AggTra
            DepthBuffer(2M) → DepthPersister · DepthRepository(depth_diff 배치·sync_events·symbol_units)
            PartitionMaintenance(★생성만 — 삭제 주체 없음) · AggTradeReconciler(60s 갭 보정)
            LiquidationRepository · RawMonitor(15s 구조화 로그) · InfraHealthMetrics(PostgreSQL 게이지)
-publish/   MarketDataPublisher — ★standalone 에서는 전 메서드 no-op(발행 대상 없음).
+publish/   MarketDataPublisher — ★이 판에서는 전 메서드 no-op(발행 대상 없음).
            클래스를 지우지 않고 빈 구현으로 둔 것은 호출부 5곳(Kline·AggTrade·ForceOrder·MarkPrice·
-           Depth)을 본판과 동일하게 유지해, 본판의 수집 개선을 가져올 때 충돌을 이 파일 하나로
+           Depth)을 원본과 동일하게 유지해, 원본의 수집 개선을 가져올 때 충돌을 이 파일 하나로
            한정하기 위해서다.
 resources/db/migration/  V1=binance_klines · V2=futures 7종+청산+agg_trade(파티션 부모)
            · V3=depth_diff(파티션 부모)+depth_symbol_units+depth_sync_events · V4=depth_diff BRIN
@@ -80,7 +90,7 @@ docs/adr/                아키텍처 결정 기록
 | 풀북 원시 차분 | WS @depth@100ms (/public) + REST depth?limit=1000 스냅샷 | 로컬 북 동기화(공식 규칙: u<lastUpdateId 버림 · 첫 이벤트 U≤lastUpdateId≤u · 이후 pu==직전 u, 갭 시 재스냅샷) | `depth_diff` (일별 파티션, BRIN 만, 기본 꺼짐) + `depth_sync_events`·`depth_symbol_units` |
 
 > **적재 경로가 없는 것**: 마크/인덱스/예상펀딩(@markPrice)·호가 상위 20단 요약·최신가.
-> 본판에서 메시지 채널로만 나가던 값이라 이 판에는 남을 곳이 없다.
+> 원본에서 메시지 채널로만 나가던 값이라 이 판에는 남을 곳이 없다.
 > 418(IP ban)은 `BinanceBanGuard` 로 모든 REST 수집기 10분 일괄 중지 (계속 두드리면 ban 연장).
 > aggTrade 는 유효성 필터(agg_id·price·qty·T 양수) — 쓰레기 행의 watermark 오염 방지.
 

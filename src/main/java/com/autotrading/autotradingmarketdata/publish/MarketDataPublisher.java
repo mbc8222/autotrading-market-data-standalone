@@ -6,14 +6,14 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
- * standalone 판 — <b>아무것도 발행하지 않는다</b>.
+ * 독립 배포판 — <b>아무것도 발행하지 않는다</b>.
  *
- * <p>본판(main)은 여기서 Redis Stream/KV 로 시장이벤트와 핫상태를 발행해 하류 서비스(분석·조회 API)에
- * 먹인다. standalone 은 <b>수집해서 PostgreSQL 에 적재하는 것까지만</b>이 목적이라 Redis 자체가 없다.
+ * <p>원본 저장소는 여기서 Redis Stream/KV 로 시장이벤트와 핫상태를 발행해 하류 서비스(분석·조회 API)에
+ * 먹인다. 이 판은 <b>수집해서 PostgreSQL 에 적재하는 것까지만</b>이 목적이라 Redis 자체가 없다.
  *
  * <p><b>클래스를 지우지 않고 빈 구현으로 남겨 둔 이유</b>: 호출부 5곳(KlineCollector · AggTradeWebSocket ·
- * ForceOrderWebSocket · MarkPriceWebSocket · DepthCollector)을 본판과 한 글자도 다르지 않게 유지하기 위해서다.
- * 그래야 main 의 수집 로직 변경을 이 브랜치로 가져올 때 충돌이 이 파일 하나로 한정된다.
+ * ForceOrderWebSocket · MarkPriceWebSocket · DepthCollector)을 원본과 한 글자도 다르지 않게 유지하기 위해서다.
+ * 그래야 원본의 수집 로직 변경을 여기로 가져올 때(git merge upstream/main) 충돌이 이 파일 하나로 한정된다.
  *
  * <p>따라서 <b>발행 경로로만 나가던 자료는 standalone 에 남지 않는다</b>:
  * <ul>
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class MarketDataPublisher {
 
-    // 본판과 상수를 맞춰 둔다(하류가 없더라도 키 규약의 기록으로서).
+    // 원본과 상수를 맞춰 둔다(하류가 없더라도 키 규약의 기록으로서).
     public static final String KLINE_STREAM_KEY = "market:kline";
     public static final String LIQUIDATION_STREAM_KEY = "market:liquidation";
     public static final String AGG_TRADE_STREAM_KEY = "market:aggTrade";

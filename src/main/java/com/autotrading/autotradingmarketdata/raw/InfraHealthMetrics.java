@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * 여기서 재는 것이 맞고, 수집기 자체가 죽으면 {@code up{job="market-data"}} 가 잡는다.
  * 10s 주기, 각 검사는 실패해도 다른 검사를 막지 않는다. 게이지는 스크레이프 시점의 마지막 검사 결과.
  *
- * <p>standalone 판에는 Redis 가 없으므로 {@code infra.redis.*} 게이지를 등록하지 않는다(본판에는 있다).
+ * <p>이 판에는 Redis 가 없으므로 {@code infra.redis.*} 게이지를 등록하지 않는다(원본에는 있다).
  */
 @Component
 public class InfraHealthMetrics {
